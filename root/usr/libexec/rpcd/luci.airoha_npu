@@ -23,6 +23,12 @@ CR_PLL_WR_PROTECT=0x1fa20268
 CLK_SRC_ARMPLL=1
 CLK_SRC_PLL2=3
 
+# Upper bound for the direct PLL path. This is policy, not a hardware limit:
+# PCW is an 8 bit field, so the register layout allows far more than the
+# silicon will ever lock at. Kept overridable so a characterisation sweep can
+# look for the real ceiling - rpcd never sets it, so the UI keeps the default.
+: "${AIROHA_OC_MAX_MHZ:=1600}"
+
 # Identify the SoC. The compatible string is authoritative and needs no
 # devmem; the chip id register is a fallback for boards with an unusual DTS.
 airoha_soc() {
@@ -442,10 +448,9 @@ set_overclock() {
 	fi
 
 	# There is no voltage control on this hardware - the AVS path in BL31 is
-	# compiled out - so everything above stock runs at stock voltage and a
-	# crash is likely past ~1500 MHz.
-	if [ "$target_mhz" -lt 500 ] || [ "$target_mhz" -gt 1600 ]; then
-		echo '{"error":"frequency must be 500-1600 MHz"}'
+	# compiled out - so everything above stock runs at stock voltage.
+	if [ "$target_mhz" -lt 500 ] || [ "$target_mhz" -gt "$AIROHA_OC_MAX_MHZ" ]; then
+		printf '{"error":"frequency must be 500-%d MHz"}' "$AIROHA_OC_MAX_MHZ"
 		return
 	fi
 
