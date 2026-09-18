@@ -61,7 +61,7 @@ Real-time monitoring and management dashboard for the Airoha AN7581 and AN7583 S
 
 - OpenWrt with LuCI (24.10+)
 - Airoha target (`@TARGET_airoha`); the overclock control needs AN7581 or AN7583, which it detects from the device tree, and refuses to write anything on an unrecognised SoC
-- Optional: **`devmem`** busybox applet (`CONFIG_BUSYBOX_CONFIG_DEVMEM=y`) for the Frame Engine registers and the CPU overclock. It is off in a default build
+- Optional: register access for the Frame Engine section and the CPU overclock, which needs two things a default build does not have: the busybox `devmem` applet (`CONFIG_BUSYBOX_CONFIG_DEVMEM=y`) and a kernel with `/dev/mem` (`CONFIG_KERNEL_DEVMEM=y`). Both are build-time options, so installing the package alone does not enable those two parts
 - Optional: PPE debugfs (`/sys/kernel/debug/ppe/entries`) for the flow offload table
 - Optional: WiFi token_info debugfs for per-band WiFi stats (`/sys/kernel/debug/ieee80211/phy0/mt76/token_info`)
 - Optional: [air_tools](https://github.com/merbanan/air_tools) scripts for additional Frame Engine debugging
