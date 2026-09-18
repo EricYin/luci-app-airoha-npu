@@ -48,7 +48,7 @@ var viewCSS = '\
 .airoha-npu-freq-value{font-weight:bold;font-size:13px;color:var(--text-color-highest,#111);margin-bottom:4px}\
 .airoha-npu-freq-row{display:flex;align-items:center;gap:10px}\
 .airoha-npu-freq-track{flex:1;width:100%;max-width:350px;height:12px}\
-.airoha-npu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:10px}\
+.airoha-npu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:10px;align-items:start}\
 .airoha-npu-band-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}\
 .airoha-npu-pse-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}\
 .airoha-npu-pse-cell{background:var(--background-color-high,#fff);border:1px solid var(--border-color-medium,#d0d0d0);border-radius:5px;padding:6px 8px;font-size:12px}\
