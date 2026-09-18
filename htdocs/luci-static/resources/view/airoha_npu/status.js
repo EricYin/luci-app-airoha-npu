@@ -355,8 +355,12 @@ function renderGovSelect(avail, active) {
 	var gs = (avail||'').trim().split(/\s+/).filter(Boolean);
 	if (!gs.length) return E('span',{},'N/A');
 	return E('select', { 'id':'cpu-governor-select','class':'cbi-input-select','style':'min-width:140px','change':function(ev){
-		var g=ev.target.value; ev.target.disabled=true;
-		callSetGovernor(g).then(function(r){ev.target.disabled=false;if(r&&r.error) ui.addNotification(null,E('p',{},_('Error: ')+r.error),'error');}).catch(function(){ev.target.disabled=false;});
+		var sel=ev.target; sel.disabled=true;
+		callSetGovernor(sel.value).then(function(r){
+			if(r&&r.error) ui.addNotification(null,E('p',{},_('Error: ')+r.error),'error');
+		}).catch(function(e){
+			ui.addNotification(null,E('p',{},_('Could not set the governor: ')+e.message),'error');
+		}).then(function(){ sel.disabled=false; });
 	}}, gs.map(function(g){return E('option',{'value':g,'selected':g===active?'':null},g);}));
 }
 
@@ -364,8 +368,12 @@ function renderMaxFreqSelect(avail, cur) {
 	var fs = (avail||'').trim().split(/\s+/).filter(Boolean);
 	if (!fs.length) return E('span',{},'N/A');
 	return E('select', { 'id':'cpu-maxfreq-select','class':'cbi-input-select','style':'min-width:140px','change':function(ev){
-		var f=ev.target.value; ev.target.disabled=true;
-		callSetMaxFreq(parseInt(f)).then(function(r){ev.target.disabled=false;if(r&&r.error) ui.addNotification(null,E('p',{},_('Error: ')+r.error),'error');}).catch(function(){ev.target.disabled=false;});
+		var sel=ev.target; sel.disabled=true;
+		callSetMaxFreq(parseInt(sel.value)).then(function(r){
+			if(r&&r.error) ui.addNotification(null,E('p',{},_('Error: ')+r.error),'error');
+		}).catch(function(e){
+			ui.addNotification(null,E('p',{},_('Could not set the maximum frequency: ')+e.message),'error');
+		}).then(function(){ sel.disabled=false; });
 	}}, fs.map(function(f){return E('option',{'value':f,'selected':parseInt(f)===parseInt(cur)?'':null},(parseInt(f)/1000).toFixed(0)+' MHz');}));
 }
 
@@ -373,6 +381,38 @@ function socLabel(soc) {
 	if (soc === 'an7583') return 'AN7583';
 	if (soc === 'en7581') return 'AN7581';
 	return _('Unknown');
+}
+
+// Ask before going past the frequency the package has been tested at. A
+// blocking confirm() freezes the whole page and is styled by the browser,
+// so use the LuCI modal and continue on its answer.
+function confirmHighFreq(mhz) {
+	return new Promise(function(resolve) {
+		ui.showModal(_('Confirm overclock'), [
+			E('p', {}, _('%d MHz is above 1400 MHz, which is as far as this has been tested. The board may run unstable or stop responding until it is power cycled.').format(mhz)),
+			E('div', { 'class': 'right' }, [
+				E('button', { 'class': 'cbi-button', 'click': function() { ui.hideModal(); resolve(false); } }, _('Cancel')),
+				' ',
+				E('button', { 'class': 'cbi-button cbi-button-negative', 'click': function() { ui.hideModal(); resolve(true); } }, _('Continue'))
+			])
+		]);
+	});
+}
+
+function applyOverclock(btn, mhz) {
+	btn.disabled = true;
+	btn.textContent = _('Applying...');
+	return callSetOverclock(mhz).then(function(r) {
+		if (r && r.error)
+			ui.addNotification(null, E('p', {}, _('Failed: ') + r.error), 'error');
+		else if (r && r.result === 'ok')
+			ui.addNotification(null, E('p', {}, _('CPU set to ') + r.actual_mhz + ' MHz'), 'info');
+	}).catch(function(e) {
+		ui.addNotification(null, E('p', {}, _('Overclock request failed: ') + e.message), 'error');
+	}).then(function() {
+		btn.disabled = false;
+		btn.textContent = _('Apply');
+	});
 }
 
 function renderOcControls(soc) {
@@ -383,14 +423,12 @@ function renderOcControls(soc) {
 
 	var inp = E('input',{'id':'oc-freq-input','type':'number','min':'500','max':'1600','step':'50','value':'1400','class':'cbi-input-text','style':'width:100px'});
 	var btn = E('button',{'class':'cbi-button cbi-button-action','style':'margin-left:8px','click':function(){
-		var f=parseInt(document.getElementById('oc-freq-input').value);
+		var f=parseInt(inp.value);
 		if(isNaN(f)||f<500||f>1600){ui.addNotification(null,E('p',{},_('Must be 500-1600 MHz')),'error');return;}
-		if(f>1400&&!confirm('Frequencies above 1400 MHz may be unstable. Continue?')) return;
-		btn.disabled=true;btn.textContent=_('Applying...');
-		callSetOverclock(f).then(function(r){btn.disabled=false;btn.textContent=_('Apply');
-			if(r&&r.error) ui.addNotification(null,E('p',{},_('Failed: ')+r.error),'error');
-			else if(r&&r.result==='ok') ui.addNotification(null,E('p',{},_('CPU set to ')+r.actual_mhz+' MHz'),'info');
-		}).catch(function(e){btn.disabled=false;btn.textContent=_('Apply');});
+		if(f>1400)
+			confirmHighFreq(f).then(function(ok){ if(ok) applyOverclock(btn,f); });
+		else
+			applyOverclock(btn,f);
 	}},_('Apply'));
 	return E('div',{'style':'display:flex;align-items:center;gap:8px;flex-wrap:wrap'},[
 		inp, E('span',{'class':'soc-muted'},'MHz'), btn,
@@ -410,9 +448,22 @@ function renderPpeRows(entries) {
 }
 
 /* ── Main View ── */
+// Only getStatus is mandatory. The PPE table needs debugfs, the WiFi token
+// info needs mt76 debugfs and the Frame Engine view needs devmem, and the
+// README lists all three as optional: a build without them has to show the
+// rest of the page, not a stack trace.
+function collect() {
+	return Promise.all([
+		L.resolveDefault(callNpuStatus(), {}),
+		L.resolveDefault(callPpeEntries(), {}),
+		L.resolveDefault(callTokenInfo(), {}),
+		L.resolveDefault(callFrameEngine(), {})
+	]);
+}
+
 return view.extend({
 	load: function() {
-		return Promise.all([ callNpuStatus(), callPpeEntries(), callTokenInfo(), callFrameEngine() ]);
+		return collect();
 	},
 
 	render: function(data) {
@@ -469,7 +520,7 @@ return view.extend({
 		]);
 
 		poll.add(L.bind(function() {
-			return Promise.all([ callNpuStatus(), callPpeEntries(), callTokenInfo(), callFrameEngine() ]).then(L.bind(function(d) {
+			return collect().then(L.bind(function(d) {
 				injectCSS();
 				var st=d[0]||{}, ppe=d[1]||{}, ti=d[2]||{}, fe=d[3]||{};
 				var entries = Array.isArray(ppe.entries)?ppe.entries:[];
