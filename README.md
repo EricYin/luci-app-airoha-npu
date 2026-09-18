@@ -1,6 +1,6 @@
 # luci-app-airoha-npu
 
-Real-time monitoring and management dashboard for the Airoha AN7581 SoC on OpenWrt. Covers NPU offload, CPU frequency, WiFi band health, Frame Engine internals, and PPE flow tables.
+Real-time monitoring and management dashboard for the Airoha AN7581 and AN7583 SoCs on OpenWrt. Covers NPU offload, CPU frequency, WiFi band health, Frame Engine internals, and PPE flow tables.
 
 **[Download](https://github.com/rchen14b/luci-app-airoha-npu/releases/latest)**
 
@@ -53,22 +53,27 @@ Real-time monitoring and management dashboard for the Airoha AN7581 SoC on OpenW
 - Auto-refreshes every 5 seconds
 
 ### Theme Support
-- Auto-detects dark/light mode by sampling page background luminance at runtime
-- Works with Glass, Bootstrap, Bootstrap-dark, and any LuCI theme
-- No hardcoded colors — uses CSS custom properties throughout
+- Colors come from the custom properties LuCI themes export (`--background-color-*`, `--text-color-*`, `--primary/success/warn/error-color-*`), each with a literal fallback
+- Light and dark mode, and any palette or tint variant a theme offers, are handled by the theme rather than detected here
+- The stylesheet lives inside the view and every class and id is prefixed `airoha-npu-`, so it neither outlives the page nor collides with another app
 
 ## Requirements
 
 - OpenWrt with LuCI (24.10+)
-- Airoha AN7581 target (`@TARGET_airoha`)
-- PPE debugfs (`/sys/kernel/debug/ppe/entries`)
-- **`devmem`** busybox applet — required for Frame Engine register access and CPU overclock (`CONFIG_BUSYBOX_DEFAULT_DEVMEM=y`)
-- WiFi token_info debugfs for per-band WiFi stats (`/sys/kernel/debug/ieee80211/phy0/mt76/token_info`)
+- Airoha target (`@TARGET_airoha`); the overclock control needs AN7581 or AN7583, which it detects from the device tree, and refuses to write anything on an unrecognised SoC
+- Optional: **`devmem`** busybox applet (`CONFIG_BUSYBOX_CONFIG_DEVMEM=y`) for the Frame Engine registers and the CPU overclock. It is off in a default build
+- Optional: PPE debugfs (`/sys/kernel/debug/ppe/entries`) for the flow offload table
+- Optional: WiFi token_info debugfs for per-band WiFi stats (`/sys/kernel/debug/ieee80211/phy0/mt76/token_info`)
 - Optional: [air_tools](https://github.com/merbanan/air_tools) scripts for additional Frame Engine debugging
+
+A missing source costs its own section; the rest of the page still renders.
 
 ## Installation
 
 ### From OpenWrt build
+
+The LuCI feed has to be installed first: the package build includes
+`feeds/luci/luci.mk`.
 
 ```sh
 # Add to your build tree
@@ -80,6 +85,18 @@ make menuconfig
 
 # Build
 make package/luci-app-airoha-npu/compile V=s
+```
+
+It can also be kept out of the build tree as its own feed, which keeps it
+out of images that do not ask for it:
+
+```sh
+# clone anywhere, then point a feed at the directory holding the clone
+git clone https://github.com/rchen14b/luci-app-airoha-npu.git ~/openwrt-feeds/luci-app-airoha-npu
+echo "src-link airoha $HOME/openwrt-feeds" >> feeds.conf
+
+./scripts/feeds update airoha
+./scripts/feeds install luci-app-airoha-npu
 ```
 
 ### Manual install (dev)
@@ -102,7 +119,7 @@ ssh root@router 'chmod +x /usr/libexec/rpcd/luci.airoha_npu && /etc/init.d/rpcd 
 | NPU status | `/sys/bus/platform/drivers/airoha-npu/`, `dmesg` | Yes |
 | CPU frequency | `/sys/devices/system/cpu/cpufreq/policy0/` | Yes |
 | Overclock PLL | `devmem` registers (0x1fa202b4, 0x1fa202b8) | devmem |
-| PPE entries | `/sys/kernel/debug/ppe/{entries,bind}` | Yes |
+| PPE entries | `/sys/kernel/debug/ppe/{entries,bind}` | Optional |
 | WiFi token pool | `/sys/kernel/debug/ieee80211/phy0/mt76/token_info` | Optional |
 | WiFi station stats | `iw dev <iface> station dump` | Optional |
 | Frame Engine (GDM/CDM/PSE) | `devmem` registers (0x1fb50xxx-0x1fb53xxx) | devmem |

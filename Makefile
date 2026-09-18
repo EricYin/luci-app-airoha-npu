@@ -21,6 +21,6 @@ LUCI_DESCRIPTION:=Status page for Airoha EN7581 and AN7583 SoCs: NPU state and \
 	mt76 debugfs nodes.
 LUCI_DEPENDS:=+luci-base @TARGET_airoha
 
-include ../../luci.mk
+include $(TOPDIR)/feeds/luci/luci.mk
 
 # call BuildPackage - OpenWrt buildroot signature
