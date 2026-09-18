@@ -99,12 +99,6 @@ function calcTotalMem(regions) {
 	return t >= 1024 ? (t/1024).toFixed(0)+' MiB' : t+' KiB';
 }
 
-function tokenHealth(c, s) {
-	if (!s) return { text: 'N/A', color: '#888' };
-	var p = c/s*100;
-	return p < 50 ? { text:'Healthy', color:'#4caf50' } : p < 80 ? { text:'Warning', color:'#ff9800' } : { text:'Critical', color:'#f44336' };
-}
-
 function getBandStats(ti, b) {
 	var c = Array.isArray(ti.station_counts) ? ti.station_counts : [];
 	for (var i=0;i<c.length;i++) if (c[i].band===b) return c[i];
@@ -151,16 +145,6 @@ function renderBandChip(band, txQ, stats) {
 			(stats.tx_packets > 0) ? E('span', { 'id': id+'-retries', 'class': 'soc-muted' }, rp) : E('span')
 		])
 	]);
-}
-
-function updateBandChip(band, stats) {
-	var id = 'band-'+band, h = bandHealth(stats);
-	var el = document.getElementById(id+'-health');
-	if (el) { el.innerHTML = ''; el.appendChild(E('span',{'style':'width:6px;height:6px;border-radius:50%;background:'+h.color+';display:inline-block'})); el.appendChild(E('span',{'style':'color:'+h.color+';font-weight:500;font-size:11px'},h.text)); }
-	var cl = document.getElementById(id+'-clients');
-	if (cl) cl.textContent = stats.count+'sta';
-	var re = document.getElementById(id+'-retries');
-	if (re) { var rp2 = retryPct(stats); re.textContent = rp2; }
 }
 
 /* ── Frame Engine Diagram (with WiFi bands, NPU, PPE flows) ── */
