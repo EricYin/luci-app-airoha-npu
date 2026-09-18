@@ -20,8 +20,10 @@ var callSetOverclock = rpc.declare({ object: 'luci.airoha_npu', method: 'setOver
  *
  * Text that sits on a filled surface takes its ink from the matching
  * --on-*-color, because a hardcoded white fails against half of the dark
- * fills. Nothing is declared on :root and every selector carries the package
- * prefix, so the sheet cannot reach another application's page.
+ * fills, and a chip with no status colour is drawn as an outline rather than
+ * invented as a filled pair the tier makes no promise about. Nothing is
+ * declared on :root and every selector carries the package prefix, so the
+ * sheet cannot reach another application's page.
  */
 var viewCSS = '\
 .airoha-npu-card{background:var(--background-color-high,#fff);border:1px solid var(--border-color-medium,#d0d0d0);border-radius:8px;padding:14px;transition:border-color .3s}\
@@ -29,16 +31,16 @@ var viewCSS = '\
 .airoha-npu-title{font-weight:bold;font-size:14px;color:var(--text-color-highest,#111)}\
 .airoha-npu-muted{color:var(--text-color-medium,#666)}\
 .airoha-npu-text{color:var(--text-color-high,#222)}\
-.airoha-npu-label{font-size:11px;color:var(--text-color-low,#888)}\
+.airoha-npu-label{font-size:11px;color:var(--text-color-medium,#666)}\
 .airoha-npu-ok{color:var(--success-color-medium,#4caf50)}\
 .airoha-npu-warn{color:var(--warn-color-medium,#ff9800)}\
 .airoha-npu-error{color:var(--error-color-medium,#f44336)}\
-.airoha-npu-idle{color:var(--text-color-low,#888)}\
+.airoha-npu-idle{color:var(--text-color-medium,#666)}\
 .airoha-npu-dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}\
 .airoha-npu-chip{padding:1px 7px;border-radius:3px;font-size:10px;font-weight:600;text-transform:uppercase}\
 .airoha-npu-chip-on{background:var(--success-color-high,#2e7d32);color:var(--on-success-color,#fff)}\
 .airoha-npu-chip-npu{background:var(--primary-color-high,#1565c0);color:var(--on-primary-color,#fff)}\
-.airoha-npu-chip-off{background:var(--border-color-medium,#d0d7de);color:var(--text-color-medium,#666)}\
+.airoha-npu-chip-off{background:none;border:1px solid var(--border-color-medium,#d0d7de);color:var(--text-color-medium,#666)}\
 .airoha-npu-bar-track{background:var(--border-color-medium,#d0d7de);border-radius:4px;overflow:hidden}\
 .airoha-npu-bar-fill{height:100%;border-radius:4px;transition:width .5s}\
 .airoha-npu-bar-ok{background:var(--success-color-high,#2e7d32)}\
