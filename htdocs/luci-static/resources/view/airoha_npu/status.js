@@ -38,13 +38,13 @@ var viewCSS = '\
 .airoha-npu-chip{padding:1px 7px;border-radius:3px;font-size:10px;font-weight:600;text-transform:uppercase}\
 .airoha-npu-chip-on{background:var(--success-color-high,#2e7d32);color:var(--on-success-color,#fff)}\
 .airoha-npu-chip-npu{background:var(--primary-color-high,#1565c0);color:var(--on-primary-color,#fff)}\
-.airoha-npu-chip-off{background:var(--background-color-low,#eee);color:var(--text-color-medium,#666)}\
-.airoha-npu-bar-track{background:var(--background-color-low,#e0e0e0);border-radius:4px;overflow:hidden}\
+.airoha-npu-chip-off{background:var(--border-color-medium,#d0d7de);color:var(--text-color-medium,#666)}\
+.airoha-npu-bar-track{background:var(--border-color-medium,#d0d7de);border-radius:4px;overflow:hidden}\
 .airoha-npu-bar-fill{height:100%;border-radius:4px;transition:width .5s}\
 .airoha-npu-bar-ok{background:var(--success-color-high,#2e7d32)}\
 .airoha-npu-bar-warn{background:var(--warn-color-high,#e65100)}\
 .airoha-npu-bar-error{background:var(--error-color-high,#c62828)}\
-.airoha-npu-bar-idle{background:var(--border-color-medium,#d0d0d0)}\
+.airoha-npu-bar-idle{background:var(--border-color-high,#9aa4ad)}\
 .airoha-npu-freq-value{font-weight:bold;font-size:13px;color:var(--text-color-highest,#111);margin-bottom:4px}\
 .airoha-npu-freq-row{display:flex;align-items:center;gap:10px}\
 .airoha-npu-freq-track{flex:1;width:100%;max-width:350px;height:12px}\
