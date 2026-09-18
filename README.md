@@ -26,7 +26,7 @@ Real-time monitoring and management dashboard for the Airoha AN7581 and AN7583 S
 - Current frequency display with visual bar graph
 - Governor selection (performance, ondemand, schedutil, etc.)
 - Max frequency selection from available OPP entries
-- Direct PLL overclock control (500-1600 MHz) with hardware register programming
+- Direct PLL overclock control (500-1600 MHz by default; the ceiling is `AIROHA_OC_MAX_MHZ` in the rpcd backend, and the page reads it rather than keeping its own copy) with hardware register programming
 - Overclock detection and warning for unstable frequencies
 
 ### NPU & Offload Engine
@@ -118,7 +118,7 @@ ssh root@router 'chmod +x /usr/libexec/rpcd/luci.airoha_npu && /etc/init.d/rpcd 
 |------|--------|----------|
 | NPU status | `/sys/bus/platform/drivers/airoha-npu/`, `dmesg` | Yes |
 | CPU frequency | `/sys/devices/system/cpu/cpufreq/policy0/` | Yes |
-| Overclock PLL | `devmem` registers (0x1fa202b4, 0x1fa202b8) | devmem |
+| Overclock PLL | `devmem` registers, per SoC: AN7581 0x1fa202b4/0x1fa202b8, AN7583 0x1fa202ac/0x1fa202b0/0x1fa202b8 | devmem |
 | PPE entries | `/sys/kernel/debug/ppe/{entries,bind}` | Optional |
 | WiFi token pool | `/sys/kernel/debug/ieee80211/phy0/mt76/token_info` | Optional |
 | WiFi station stats | `iw dev <iface> station dump` | Optional |
