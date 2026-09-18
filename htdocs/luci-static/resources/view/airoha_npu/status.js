@@ -35,7 +35,7 @@ var viewCSS = '\
 .airoha-npu-error{color:var(--error-color-medium,#f44336)}\
 .airoha-npu-idle{color:var(--text-color-low,#888)}\
 .airoha-npu-dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}\
-.airoha-npu-chip{padding:1px 7px;border-radius:3px;font-size:10px;font-weight:600}\
+.airoha-npu-chip{padding:1px 7px;border-radius:3px;font-size:10px;font-weight:600;text-transform:uppercase}\
 .airoha-npu-chip-on{background:var(--success-color-high,#2e7d32);color:var(--on-success-color,#fff)}\
 .airoha-npu-chip-npu{background:var(--primary-color-high,#1565c0);color:var(--on-primary-color,#fff)}\
 .airoha-npu-chip-off{background:var(--background-color-low,#eee);color:var(--text-color-medium,#666)}\
@@ -59,19 +59,10 @@ var viewCSS = '\
 var bandNames = ['2.4 GHz', '5 GHz', '6 GHz'];
 
 var psePortMap = [
-	{ name: 'CDM1', label: 'CPU DMA 1' },
-	{ name: 'GDM1', label: 'Switch 1G' },
-	{ name: 'GDM2', label: 'WAN 10G' },
-	{ name: 'GDM3', label: 'GDM3' },
-	{ name: 'PPE1', label: 'PPE Eng 1' },
-	{ name: 'CDM2', label: 'CPU DMA 2' },
-	{ name: 'CDM3', label: 'CDM3' },
-	{ name: 'CDM4', label: 'WDMA WiFi' },
-	{ name: 'PPE2', label: 'PPE Eng 2' },
-	{ name: 'GDM4', label: 'LAN2 10G' }
+	'CDM1', 'GDM1', 'GDM2', 'GDM3', 'PPE1', 'CDM2', 'CDM3', 'CDM4', 'PPE2', 'GDM4'
 ];
 
-function fmtFreq(khz) { return (!khz || khz === 0) ? 'N/A' : (khz / 1000).toFixed(0) + ' MHz'; }
+function fmtFreq(khz) { return (!khz || khz === 0) ? _('N/A') : (khz / 1000).toFixed(0) + ' MHz'; }
 function fmtK(n) {
 	if (!n || n === 0) return '0';
 	if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
@@ -107,10 +98,10 @@ function getTxQueue(ti, b) {
 }
 
 function bandHealth(s) {
-	if (!s || s.count===0) return { text:'No clients', cls:'idle' };
-	if (!s.tx_packets) return { text:'Idle', cls:'idle' };
+	if (!s || s.count===0) return { text:_('No clients'), cls:'idle' };
+	if (!s.tx_packets) return { text:_('Idle'), cls:'idle' };
 	var r = s.tx_retries/(s.tx_packets+s.tx_retries);
-	return r>0.5 ? {text:'Poor',cls:'error'} : r>0.2 ? {text:'Fair',cls:'warn'} : {text:'Good',cls:'ok'};
+	return r>0.5 ? {text:_('Poor'),cls:'error'} : r>0.2 ? {text:_('Fair'),cls:'warn'} : {text:_('Good'),cls:'ok'};
 }
 
 function retryPct(s) {
@@ -120,7 +111,7 @@ function retryPct(s) {
 
 /* ── Mini Band Chip (compact for FE diagram) ── */
 function renderBandChip(band, txQ, stats) {
-	var name = bandNames[band] || 'Band '+band;
+	var name = bandNames[band] || _('Band %d').format(band);
 	var h = bandHealth(stats);
 	var type = txQ ? txQ.type : '?';
 
@@ -134,7 +125,7 @@ function renderBandChip(band, txQ, stats) {
 				E('span', { 'class': 'airoha-npu-dot' }),
 				E('span', {}, h.text)
 			]),
-			E('span', { 'class': 'airoha-npu-muted' }, stats.count + ' sta'),
+			E('span', { 'class': 'airoha-npu-muted' }, _('%d sta').format(stats.count)),
 			(stats.tx_packets > 0) ? E('span', { 'class': 'airoha-npu-muted' }, retryPct(stats)) : E('span')
 		])
 	]);
@@ -142,7 +133,7 @@ function renderBandChip(band, txQ, stats) {
 
 /* ── Frame Engine Diagram (with WiFi bands, NPU, PPE flows) ── */
 function renderFeDiagram(fe, ti, st) {
-	if (!fe || fe.error) return E('div', { 'class': 'airoha-npu-muted' }, 'devmem not available on this build');
+	if (!fe || fe.error) return E('div', { 'class': 'airoha-npu-muted' }, _('devmem is not available on this build'));
 	ti = ti || {}; st = st || {};
 
 	var ports = Array.isArray(fe.pse_ports) ? fe.pse_ports : [];
@@ -158,12 +149,12 @@ function renderFeDiagram(fe, ti, st) {
 			]),
 			E('div', { 'class': 'airoha-npu-label', 'style': 'margin-bottom:6px' }, label),
 			E('div', { 'style': 'display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px' }, [
-				E('span', { 'class': 'airoha-npu-muted' }, 'TX'), E('span', { 'class': 'airoha-npu-text', 'style': 'text-align:right' }, fmtK(d.tx)),
-				E('span', { 'class': 'airoha-npu-muted' }, 'RX'), E('span', { 'class': 'airoha-npu-text', 'style': 'text-align:right' }, fmtK(d.rx))
+				E('span', { 'class': 'airoha-npu-muted' }, _('TX')), E('span', { 'class': 'airoha-npu-text', 'style': 'text-align:right' }, fmtK(d.tx)),
+				E('span', { 'class': 'airoha-npu-muted' }, _('RX')), E('span', { 'class': 'airoha-npu-text', 'style': 'text-align:right' }, fmtK(d.rx))
 			].concat(d.tx_drop > 0 ? [
-				E('span', { 'class': 'airoha-npu-error' }, 'TX Drop'), E('span', { 'class': 'airoha-npu-error', 'style': 'text-align:right' }, fmtK(d.tx_drop))
+				E('span', { 'class': 'airoha-npu-error' }, _('TX Drop')), E('span', { 'class': 'airoha-npu-error', 'style': 'text-align:right' }, fmtK(d.tx_drop))
 			] : []).concat(d.rx_drop > 0 ? [
-				E('span', { 'class': 'airoha-npu-error' }, 'RX Drop'), E('span', { 'class': 'airoha-npu-error', 'style': 'text-align:right' }, fmtK(d.rx_drop))
+				E('span', { 'class': 'airoha-npu-error' }, _('RX Drop')), E('span', { 'class': 'airoha-npu-error', 'style': 'text-align:right' }, fmtK(d.rx_drop))
 			] : []))
 		]);
 	}
@@ -180,14 +171,14 @@ function renderFeDiagram(fe, ti, st) {
 				E('span', { 'class': 'airoha-npu-title', 'style': 'font-size:13px' }, name+' '+pse),
 				E('span', { 'class': 'airoha-npu-label' }, label)
 			]),
-			E('div', { 'class': 'airoha-npu-text', 'style': 'font-size:12px;margin-bottom:4px' }, 'HW Offload: '+pct+'%'),
+			E('div', { 'class': 'airoha-npu-text', 'style': 'font-size:12px;margin-bottom:4px' }, _('HW Offload: %s%%').format(pct)),
 			E('div', { 'class': 'airoha-npu-bar-track', 'style': 'height:6px' }, [
 				E('div', { 'class': 'airoha-npu-bar-fill airoha-npu-bar-'+barCls, 'style': 'width:'+pct+'%' })
 			]),
 			E('div', { 'style': 'display:flex;justify-content:space-between;gap:6px;font-size:11px;margin-top:4px' }, [
-				E('span', { 'class': 'airoha-npu-muted' }, 'CPU: '+fmtK(d.rx_cpu||0)),
-				E('span', { 'class': 'airoha-npu-muted' }, 'HWF: '+fmtK(d.rx_hwf||0)),
-				E('span', { 'class': 'airoha-npu-muted' }, 'TX: '+fmtK(d.tx||0))
+				E('span', { 'class': 'airoha-npu-muted' }, _('CPU: %s').format(fmtK(d.rx_cpu||0))),
+				E('span', { 'class': 'airoha-npu-muted' }, _('HWF: %s').format(fmtK(d.rx_hwf||0))),
+				E('span', { 'class': 'airoha-npu-muted' }, _('TX: %s').format(fmtK(d.tx||0)))
 			])
 		]);
 	}
@@ -201,12 +192,12 @@ function renderFeDiagram(fe, ti, st) {
 	var cdm4WiFi = E('div', { 'class': 'airoha-npu-card' }, [
 		E('div', { 'style': 'display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:2px' }, [
 			E('span', { 'class': 'airoha-npu-title' }, 'CDM4 / WDMA'),
-			E('span', { 'class': 'airoha-npu-label' }, 'P7 WiFi DMA')
+			E('span', { 'class': 'airoha-npu-label' }, _('P7 WiFi DMA'))
 		]),
 		E('div', { 'style': 'display:flex;gap:12px;font-size:11px;margin-bottom:8px' }, [
 			E('span', { 'class': 'airoha-npu-muted' }, 'IQ '+p7.iq),
 			E('span', { 'class': 'airoha-npu-muted' }, 'OQ '+p7.oq),
-			p7.drops > 0 ? E('span', { 'class': 'airoha-npu-error' }, 'Drop '+fmtK(p7.drops)) : null
+			p7.drops > 0 ? E('span', { 'class': 'airoha-npu-error' }, _('Drop %s').format(fmtK(p7.drops))) : null
 		].filter(Boolean)),
 		// WiFi bands inside
 		E('div', { 'class': 'airoha-npu-band-grid' }, bandChips)
@@ -217,28 +208,28 @@ function renderFeDiagram(fe, ti, st) {
 	var npuCard = E('div', { 'class': 'airoha-npu-card' + (npuActive ? ' airoha-npu-card-active' : '') }, [
 		E('div', { 'style': 'display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px' }, [
 			E('span', { 'class': 'airoha-npu-title' }, 'NPU'),
-			E('span', { 'class': 'airoha-npu-chip '+(npuActive?'airoha-npu-chip-on':'airoha-npu-chip-off') }, npuActive ? 'ACTIVE' : 'OFF')
+			E('span', { 'class': 'airoha-npu-chip '+(npuActive?'airoha-npu-chip-on':'airoha-npu-chip-off') }, npuActive ? _('Active') : _('Off'))
 		]),
-		E('div', { 'class': 'airoha-npu-label', 'style': 'margin-bottom:4px' }, '8x RISC-V via PCIe RAM'),
+		E('div', { 'class': 'airoha-npu-label', 'style': 'margin-bottom:4px' }, _('8x RISC-V via PCIe RAM')),
 		E('div', { 'style': 'font-size:11px' }, [
-			E('span', { 'class': 'airoha-npu-muted' }, 'Manages: '),
-			E('span', { 'class': 'airoha-npu-text' }, 'PPE init, WDMA rings, flow stats')
+			E('span', { 'class': 'airoha-npu-muted' }, _('Manages: ')),
+			E('span', { 'class': 'airoha-npu-text' }, _('PPE init, WDMA rings, flow stats'))
 		])
 	]);
 
 	// PPE engines with flow count
 	var ppeCard = E('div', { 'class': 'airoha-npu-card airoha-npu-card-active' }, [
 		E('div', { 'style': 'display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px' }, [
-			E('span', { 'class': 'airoha-npu-title' }, 'PPE Engines'),
+			E('span', { 'class': 'airoha-npu-title' }, _('PPE Engines')),
 			E('span', { 'class': 'airoha-npu-label' }, 'P4 + P8')
 		]),
 		E('div', { 'style': 'display:flex;gap:16px;font-size:12px' }, [
 			E('span', {}, [
-				E('span', { 'class': 'airoha-npu-muted' }, 'Bound '),
+				E('span', { 'class': 'airoha-npu-muted' }, _('Bound ')),
 				E('span', { 'class': 'airoha-npu-text', 'style': 'font-weight:bold' }, (st.offload_bound||0).toString())
 			]),
 			E('span', {}, [
-				E('span', { 'class': 'airoha-npu-muted' }, 'Total '),
+				E('span', { 'class': 'airoha-npu-muted' }, _('Total ')),
 				E('span', { 'class': 'airoha-npu-text' }, (st.offload_total||0).toString())
 			])
 		])
@@ -250,10 +241,10 @@ function renderFeDiagram(fe, ti, st) {
 
 	// PSE port cells (skip P7 since it's shown in CDM4/WiFi section)
 	var portCells = ports.filter(function(p){ return p.port !== 7; }).map(function(p) {
-		var info = psePortMap[p.port] || { name:'P'+p.port, label:'?' };
+		var name = psePortMap[p.port] || '';
 		var drop = p.drops > 0;
 		return E('div', { 'class': 'airoha-npu-pse-cell' + (drop ? ' airoha-npu-pse-cell-drop' : '') }, [
-			E('div', { 'class': 'airoha-npu-text', 'style': 'font-weight:600;font-size:11px' }, 'P'+p.port+' '+info.name),
+			E('div', { 'class': 'airoha-npu-text', 'style': 'font-weight:600;font-size:11px' }, ('P'+p.port+' '+name).trim()),
 			E('div', { 'style': 'display:flex;gap:8px;font-size:11px;margin-top:2px' }, [
 				E('span', { 'class': 'airoha-npu-muted' }, 'IQ '+p.iq),
 				E('span', { 'class': 'airoha-npu-muted' }, 'OQ '+p.oq),
@@ -266,8 +257,8 @@ function renderFeDiagram(fe, ti, st) {
 		// PSE buffer bar
 		E('div', { 'class': 'airoha-npu-card', 'style': 'margin-bottom:10px' }, [
 			E('div', { 'style': 'display:flex;justify-content:space-between;gap:8px;margin-bottom:4px' }, [
-				E('span', { 'class': 'airoha-npu-title', 'style': 'font-size:13px' }, 'PSE Shared Buffer'),
-				E('span', { 'class': 'airoha-npu-muted', 'style': 'font-size:12px' }, (fe.pse_used||0)+' used / '+(fe.pse_free||0)+' free ('+pseP+'%)')
+				E('span', { 'class': 'airoha-npu-title', 'style': 'font-size:13px' }, _('PSE Shared Buffer')),
+				E('span', { 'class': 'airoha-npu-muted', 'style': 'font-size:12px' }, _('%d used / %d free (%s%%)').format(fe.pse_used||0, fe.pse_free||0, pseP))
 			]),
 			E('div', { 'class': 'airoha-npu-bar-track', 'style': 'height:8px' }, [
 				E('div', { 'class': 'airoha-npu-bar-fill airoha-npu-bar-'+loadClass(parseFloat(pseP)), 'style': 'width:'+pseP+'%' })
@@ -275,14 +266,14 @@ function renderFeDiagram(fe, ti, st) {
 		]),
 		// Row 1: GDM ports
 		E('div', { 'class': 'airoha-npu-grid' }, [
-			gdmCard('gdm1', 'GDM1', 'Internal Switch (1G LAN3/4)', 'P1'),
-			gdmCard('gdm2', 'GDM2', 'WAN (USXGMII 10G)', 'P2'),
-			gdmCard('gdm4', 'GDM4', 'LAN2 (USXGMII 10G)', 'P9')
+			gdmCard('gdm1', 'GDM1', _('Internal Switch (1G LAN3/4)'), 'P1'),
+			gdmCard('gdm2', 'GDM2', _('WAN (USXGMII 10G)'), 'P2'),
+			gdmCard('gdm4', 'GDM4', _('LAN2 (USXGMII 10G)'), 'P9')
 		]),
 		// Row 2: CDM1/CDM2 (CPU) + CDM4/WiFi
 		E('div', { 'class': 'airoha-npu-grid' }, [
-			cdmCard('cdm1', 'CDM1', 'CPU DMA 1', 'P0'),
-			cdmCard('cdm2', 'CDM2', 'CPU DMA 2', 'P5'),
+			cdmCard('cdm1', 'CDM1', _('CPU DMA 1'), 'P0'),
+			cdmCard('cdm2', 'CDM2', _('CPU DMA 2'), 'P5'),
 			cdm4WiFi
 		]),
 		// Row 3: PPE + NPU
@@ -291,7 +282,7 @@ function renderFeDiagram(fe, ti, st) {
 			npuCard
 		]),
 		// PSE port grid
-		E('div', { 'class': 'airoha-npu-text', 'style': 'font-size:12px;font-weight:600;margin-bottom:6px' }, 'PSE Port Queue Status'),
+		E('div', { 'class': 'airoha-npu-text', 'style': 'font-size:12px;font-weight:600;margin-bottom:6px' }, _('PSE Port Queue Status')),
 		E('div', { 'class': 'airoha-npu-pse-grid' }, portCells)
 	]);
 }
@@ -312,7 +303,7 @@ function freqBarLabel(s, pll) {
 }
 
 function renderFreqBar(hw, min, max, pll, gov) {
-	if (!max) return E('span',{},'N/A');
+	if (!max) return E('span',{},_('N/A'));
 	var s = freqBarState(hw,min,max,pll,gov);
 
 	// The reading sits above the bar rather than on top of it: a label
@@ -345,26 +336,26 @@ function updateFreqBar(hw, min, max, pll, gov) {
 
 function renderGovSelect(avail, active) {
 	var gs = (avail||'').trim().split(/\s+/).filter(Boolean);
-	if (!gs.length) return E('span',{},'N/A');
+	if (!gs.length) return E('span',{},_('N/A'));
 	return E('select', { 'id':'airoha-npu-governor-select','class':'cbi-input-select','style':'min-width:140px','change':function(ev){
 		var sel=ev.target; sel.disabled=true;
 		callSetGovernor(sel.value).then(function(r){
-			if(r&&r.error) ui.addNotification(null,E('p',{},_('Error: ')+r.error),'error');
+			if(r&&r.error) ui.addNotification(null,E('p',{},_('Error: %s').format(r.error)),'error');
 		}).catch(function(e){
-			ui.addNotification(null,E('p',{},_('Could not set the governor: ')+e.message),'error');
+			ui.addNotification(null,E('p',{},_('Could not set the governor: %s').format(e.message)),'error');
 		}).then(function(){ sel.disabled=false; });
 	}}, gs.map(function(g){return E('option',{'value':g,'selected':g===active?'':null},g);}));
 }
 
 function renderMaxFreqSelect(avail, cur) {
 	var fs = (avail||'').trim().split(/\s+/).filter(Boolean);
-	if (!fs.length) return E('span',{},'N/A');
+	if (!fs.length) return E('span',{},_('N/A'));
 	return E('select', { 'id':'airoha-npu-maxfreq-select','class':'cbi-input-select','style':'min-width:140px','change':function(ev){
 		var sel=ev.target; sel.disabled=true;
 		callSetMaxFreq(parseInt(sel.value)).then(function(r){
-			if(r&&r.error) ui.addNotification(null,E('p',{},_('Error: ')+r.error),'error');
+			if(r&&r.error) ui.addNotification(null,E('p',{},_('Error: %s').format(r.error)),'error');
 		}).catch(function(e){
-			ui.addNotification(null,E('p',{},_('Could not set the maximum frequency: ')+e.message),'error');
+			ui.addNotification(null,E('p',{},_('Could not set the maximum frequency: %s').format(e.message)),'error');
 		}).then(function(){ sel.disabled=false; });
 	}}, fs.map(function(f){return E('option',{'value':f,'selected':parseInt(f)===parseInt(cur)?'':null},(parseInt(f)/1000).toFixed(0)+' MHz');}));
 }
@@ -396,11 +387,11 @@ function applyOverclock(btn, mhz) {
 	btn.textContent = _('Applying...');
 	return callSetOverclock(mhz).then(function(r) {
 		if (r && r.error)
-			ui.addNotification(null, E('p', {}, _('Failed: ') + r.error), 'error');
+			ui.addNotification(null, E('p', {}, _('Failed: %s').format(r.error)), 'error');
 		else if (r && r.result === 'ok')
-			ui.addNotification(null, E('p', {}, _('CPU set to ') + r.actual_mhz + ' MHz'), 'info');
+			ui.addNotification(null, E('p', {}, _('CPU set to %d MHz').format(r.actual_mhz)), 'info');
 	}).catch(function(e) {
-		ui.addNotification(null, E('p', {}, _('Overclock request failed: ') + e.message), 'error');
+		ui.addNotification(null, E('p', {}, _('Overclock request failed: %s').format(e.message)), 'error');
 	}).then(function() {
 		btn.disabled = false;
 		btn.textContent = _('Apply');
@@ -416,7 +407,7 @@ function renderOcControls(soc) {
 	var inp = E('input',{'id':'airoha-npu-oc-input','type':'number','min':'500','max':'1600','step':'50','value':'1400','class':'cbi-input-text','style':'width:100px'});
 	var btn = E('button',{'class':'cbi-button cbi-button-action','style':'margin-left:8px','click':function(){
 		var f=parseInt(inp.value);
-		if(isNaN(f)||f<500||f>1600){ui.addNotification(null,E('p',{},_('Must be 500-1600 MHz')),'error');return;}
+		if(isNaN(f)||f<500||f>1600){ui.addNotification(null,E('p',{},_('The frequency must be between 500 and 1600 MHz')),'error');return;}
 		if(f>1400)
 			confirmHighFreq(f).then(function(ok){ if(ok) applyOverclock(btn,f); });
 		else
@@ -488,12 +479,12 @@ return view.extend({
 				E('table',{'class':'table'},[
 					E('tr',{'class':'tr'},[ E('td',{'class':'td','width':'33%'},E('strong',{},_('NPU Status'))),
 						E('td',{'class':'td','id':'airoha-npu-status'}, st.npu_loaded ?
-							E('span',{'class':'label-success'},_('Active')+(st.npu_device?' ('+st.npu_device+')':'')) :
+							E('span',{'class':'label-success'},st.npu_device?_('Active (%s)').format(st.npu_device):_('Active')) :
 							E('span',{'class':'label-danger'},_('Not Active'))) ]),
 					E('tr',{'class':'tr'},[ E('td',{'class':'td'},E('strong',{},_('Firmware / Clock / Cores'))),
-						E('td',{'class':'td'}, (st.npu_version||'N/A')+' | '+(st.npu_clock?(st.npu_clock/1e6).toFixed(0)+' MHz':'N/A')+' | '+(st.npu_cores||0)+' cores') ]),
+						E('td',{'class':'td'}, _('%s | %s | %d cores').format(st.npu_version||_('N/A'), st.npu_clock?(st.npu_clock/1e6).toFixed(0)+' MHz':_('N/A'), st.npu_cores||0)) ]),
 					E('tr',{'class':'tr'},[ E('td',{'class':'td'},E('strong',{},_('Reserved Memory'))),
-						E('td',{'class':'td'}, calcTotalMem(memR)+' ('+memR.length+' regions)') ])
+						E('td',{'class':'td'}, _('%s (%d regions)').format(calcTotalMem(memR), memR.length)) ])
 				]),
 
 				// Frame Engine diagram (includes WiFi bands, PPE flows, NPU indicator)
@@ -523,7 +514,7 @@ return view.extend({
 				var fs=document.getElementById('airoha-npu-maxfreq-select'); if(fs&&!fs.matches(':focus')) fs.value=(st.cpu_max_freq||0).toString();
 
 				var se=document.getElementById('airoha-npu-status');
-				if(se){se.innerHTML='';var sp=document.createElement('span');sp.className=st.npu_loaded?'label-success':'label-danger';sp.textContent=st.npu_loaded?(_('Active')+(st.npu_device?' ('+st.npu_device+')':'')):_('Not Active');se.appendChild(sp);}
+				if(se){se.innerHTML='';var sp=document.createElement('span');sp.className=st.npu_loaded?'label-success':'label-danger';sp.textContent=st.npu_loaded?(st.npu_device?_('Active (%s)').format(st.npu_device):_('Active')):_('Not Active');se.appendChild(sp);}
 
 				var fc=document.getElementById('airoha-npu-fe-container'); if(fc){fc.innerHTML='';fc.appendChild(renderFeDiagram(fe, ti, st));}
 
