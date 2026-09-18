@@ -29,6 +29,10 @@ CLK_SRC_PLL2=3
 # look for the real ceiling - rpcd never sets it, so the UI keeps the default.
 : "${AIROHA_OC_MAX_MHZ:=1600}"
 
+# Lower bound: below this the clock switch has nothing useful to select. Not
+# overridable - there is no reason to sweep downwards.
+AIROHA_OC_MIN_MHZ=500
+
 # Identify the SoC. The compatible string is authoritative and needs no
 # devmem; the chip id register is a fallback for boards with an unusual DTS.
 airoha_soc() {
@@ -262,9 +266,10 @@ get_status() {
 		cpu_count=$(ls -d /sys/devices/system/cpu/cpu[0-9]* 2>/dev/null | wc -l)
 	fi
 
-	printf '{"npu_version":"%s","npu_loaded":%s,"npu_device":"%s","npu_clock":%d,"npu_cores":%d,"offload_bound":%d,"offload_total":%d,"memory_regions":%s,"cpu_cur_freq":%d,"cpu_hw_freq":%d,"cpu_governor":"%s","cpu_avail_governors":"%s","cpu_min_freq":%d,"cpu_max_freq":%d,"cpu_avail_freqs":"%s","cpu_count":%d,"pll_freq_mhz":%d,"soc":"%s"}' \
+	printf '{"npu_version":"%s","npu_loaded":%s,"npu_device":"%s","npu_clock":%d,"npu_cores":%d,"offload_bound":%d,"offload_total":%d,"memory_regions":%s,"cpu_cur_freq":%d,"cpu_hw_freq":%d,"cpu_governor":"%s","cpu_avail_governors":"%s","cpu_min_freq":%d,"cpu_max_freq":%d,"cpu_avail_freqs":"%s","cpu_count":%d,"pll_freq_mhz":%d,"soc":"%s","oc_min_mhz":%d,"oc_max_mhz":%d}' \
 		"${npu_ver:-Unknown}" "$npu_loaded" "${npu_device:-}" "${npu_clock:-0}" "${npu_cores:-0}" "${offload_bound:-0}" "${offload_total:-0}" "$regions" \
-		"${cpu_cur_freq:-0}" "${cpu_hw_freq:-0}" "${cpu_governor:-unknown}" "${cpu_avail_governors:-}" "${cpu_min_freq:-0}" "${cpu_max_freq:-0}" "${cpu_avail_freqs:-}" "${cpu_count:-0}" "${pll_freq:-0}" "${soc:-unknown}"
+		"${cpu_cur_freq:-0}" "${cpu_hw_freq:-0}" "${cpu_governor:-unknown}" "${cpu_avail_governors:-}" "${cpu_min_freq:-0}" "${cpu_max_freq:-0}" "${cpu_avail_freqs:-}" "${cpu_count:-0}" "${pll_freq:-0}" "${soc:-unknown}" \
+		"$AIROHA_OC_MIN_MHZ" "$AIROHA_OC_MAX_MHZ"
 }
 
 get_ppe_entries() {
@@ -468,8 +473,8 @@ set_overclock() {
 
 	# There is no voltage control on this hardware - the AVS path in BL31 is
 	# compiled out - so everything above stock runs at stock voltage.
-	if [ "$target_mhz" -lt 500 ] || [ "$target_mhz" -gt "$AIROHA_OC_MAX_MHZ" ]; then
-		printf '{"error":"frequency must be 500-%d MHz"}' "$AIROHA_OC_MAX_MHZ"
+	if [ "$target_mhz" -lt "$AIROHA_OC_MIN_MHZ" ] || [ "$target_mhz" -gt "$AIROHA_OC_MAX_MHZ" ]; then
+		printf '{"error":"frequency must be %d-%d MHz"}' "$AIROHA_OC_MIN_MHZ" "$AIROHA_OC_MAX_MHZ"
 		return
 	fi
 

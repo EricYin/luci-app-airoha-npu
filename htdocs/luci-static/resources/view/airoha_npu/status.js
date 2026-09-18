@@ -288,8 +288,11 @@ function renderFeDiagram(fe, ti, st) {
 }
 
 /* ── CPU Frequency ── */
-function freqBarState(hw, min, max, pll, gov) {
-	var oc = gov==='performance' && pll>0 && (pll*1000)>max;
+// The PLL sitting above what cpufreq is allowed to ask for is an overclock
+// whichever governor is running: the direct write goes behind cpufreq's back,
+// so the governor says nothing about whether it happened.
+function freqBarState(hw, min, max, pll) {
+	var oc = pll>0 && (pll*1000)>max;
 	return { freq: oc ? pll*1000 : Math.min(hw,max), max: oc ? pll*1000 : max, oc: oc };
 }
 
@@ -302,9 +305,9 @@ function freqBarLabel(s, pll) {
 	return s.oc ? (pll+' MHz (OC)') : fmtFreq(s.freq);
 }
 
-function renderFreqBar(hw, min, max, pll, gov) {
+function renderFreqBar(hw, min, max, pll) {
 	if (!max) return E('span',{},_('N/A'));
-	var s = freqBarState(hw,min,max,pll,gov);
+	var s = freqBarState(hw,min,max,pll);
 
 	// The reading sits above the bar rather than on top of it: a label
 	// overlaying the track covers both the filled and the empty part, and no
@@ -321,8 +324,8 @@ function renderFreqBar(hw, min, max, pll, gov) {
 	]);
 }
 
-function updateFreqBar(hw, min, max, pll, gov) {
-	var s = freqBarState(hw,min,max,pll,gov);
+function updateFreqBar(hw, min, max, pll) {
+	var s = freqBarState(hw,min,max,pll);
 	var el = document.getElementById('airoha-npu-freq-value');
 	var fl = document.getElementById('airoha-npu-freq-fill');
 	var ml = document.getElementById('airoha-npu-freq-max');
@@ -374,13 +377,18 @@ function socLabel(soc) {
 	return _('Unknown');
 }
 
+// The highest frequency this package has been run at on real hardware. The
+// ceiling itself is the backend's (AIROHA_OC_MAX_MHZ), which a characterisation
+// sweep may raise well past what anyone has tested.
+var OC_TESTED_MHZ = 1400;
+
 // Ask before going past the frequency the package has been tested at. A
 // blocking confirm() freezes the whole page and is styled by the browser,
 // so use the LuCI modal and continue on its answer.
 function confirmHighFreq(mhz) {
 	return new Promise(function(resolve) {
 		ui.showModal(_('Confirm overclock'), [
-			E('p', {}, _('%d MHz is above 1400 MHz, which is as far as this has been tested. The board may run unstable or stop responding until it is power cycled.').format(mhz)),
+			E('p', {}, _('%d MHz is above %d MHz, which is as far as this has been tested. The board may run unstable or stop responding until it is power cycled.').format(mhz, OC_TESTED_MHZ)),
 			E('div', { 'class': 'right' }, [
 				E('button', { 'class': 'cbi-button', 'click': function() { ui.hideModal(); resolve(false); } }, _('Cancel')),
 				' ',
@@ -406,24 +414,29 @@ function applyOverclock(btn, mhz) {
 	});
 }
 
-function renderOcControls(soc) {
+function renderOcControls(soc, ocMin, ocMax) {
 	// The PLL register map differs per SoC, so refuse to write anything when
 	// the SoC was not identified rather than poking AN7581 addresses blindly.
 	if (soc !== 'an7583' && soc !== 'en7581')
 		return E('span',{'class':'airoha-npu-muted'},_('Not available: unrecognised SoC'));
 
-	var inp = E('input',{'id':'airoha-npu-oc-input','type':'number','min':'500','max':'1600','step':'50','value':'1400','class':'cbi-input-text','style':'width:100px'});
+	// The bounds are the backend's, not a second copy of them: it is the side
+	// that enforces them, and its ceiling is configurable.
+	ocMin = parseInt(ocMin) || 500;
+	ocMax = parseInt(ocMax) || 1600;
+
+	var inp = E('input',{'id':'airoha-npu-oc-input','type':'number','min':String(ocMin),'max':String(ocMax),'step':'50','value':String(Math.min(OC_TESTED_MHZ, ocMax)),'class':'cbi-input-text','style':'width:100px'});
 	var btn = E('button',{'class':'cbi-button cbi-button-action','style':'margin-left:8px','click':function(){
 		var f=parseInt(inp.value);
-		if(isNaN(f)||f<500||f>1600){ui.addNotification(null,E('p',{},_('The frequency must be between 500 and 1600 MHz')),'error');return;}
-		if(f>1400)
+		if(isNaN(f)||f<ocMin||f>ocMax){ui.addNotification(null,E('p',{},_('The frequency must be between %d and %d MHz').format(ocMin,ocMax)),'error');return;}
+		if(f>OC_TESTED_MHZ)
 			confirmHighFreq(f).then(function(ok){ if(ok) applyOverclock(btn,f); });
 		else
 			applyOverclock(btn,f);
 	}},_('Apply'));
 	return E('div',{'style':'display:flex;align-items:center;gap:8px;flex-wrap:wrap'},[
 		inp, E('span',{'class':'airoha-npu-muted'},'MHz'), btn,
-		E('span',{'class':'airoha-npu-muted','style':'font-size:85%;margin-left:8px'},_('Direct PLL. Stock max 1200 MHz. Stable up to 1500 MHz.'))
+		E('span',{'class':'airoha-npu-muted','style':'font-size:85%;margin-left:8px'},_('Direct PLL write, %d-%d MHz. Tested up to %d MHz.').format(ocMin,ocMax,OC_TESTED_MHZ))
 	]);
 }
 
@@ -472,10 +485,10 @@ return view.extend({
 			E('div',{'class':'cbi-section'},[
 				E('h3',{},_('CPU Frequency')),
 				E('table',{'class':'table'},[
-					E('tr',{'class':'tr'},[ E('td',{'class':'td','width':'33%'},E('strong',{},_('Current Frequency'))), E('td',{'class':'td'}, renderFreqBar(st.cpu_hw_freq,st.cpu_min_freq,st.cpu_max_freq,st.pll_freq_mhz,st.cpu_governor)) ]),
+					E('tr',{'class':'tr'},[ E('td',{'class':'td','width':'33%'},E('strong',{},_('Current Frequency'))), E('td',{'class':'td'}, renderFreqBar(st.cpu_hw_freq,st.cpu_min_freq,st.cpu_max_freq,st.pll_freq_mhz)) ]),
 					E('tr',{'class':'tr'},[ E('td',{'class':'td'},E('strong',{},_('Governor'))), E('td',{'class':'td'}, renderGovSelect(st.cpu_avail_governors,st.cpu_governor)) ]),
 					E('tr',{'class':'tr'},[ E('td',{'class':'td'},E('strong',{},_('Max Frequency'))), E('td',{'class':'td'}, renderMaxFreqSelect(st.cpu_avail_freqs,st.cpu_max_freq)) ]),
-					E('tr',{'class':'tr'},[ E('td',{'class':'td'},E('strong',{},_('Overclock'))), E('td',{'class':'td'}, renderOcControls(st.soc)) ]),
+					E('tr',{'class':'tr'},[ E('td',{'class':'td'},E('strong',{},_('Overclock'))), E('td',{'class':'td'}, renderOcControls(st.soc, st.oc_min_mhz, st.oc_max_mhz)) ]),
 					E('tr',{'class':'tr'},[ E('td',{'class':'td'},E('strong',{},_('CPU Cores'))), E('td',{'class':'td'},(st.cpu_count||0).toString()) ]),
 					E('tr',{'class':'tr'},[ E('td',{'class':'td'},E('strong',{},_('SoC'))), E('td',{'class':'td'},socLabel(st.soc)) ])
 				])
@@ -517,7 +530,7 @@ return view.extend({
 				var st=d[0]||{}, ppe=d[1]||{}, ti=d[2]||{}, fe=d[3]||{};
 				var entries = Array.isArray(ppe.entries)?ppe.entries:[];
 
-				updateFreqBar(st.cpu_hw_freq,st.cpu_min_freq,st.cpu_max_freq,st.pll_freq_mhz,st.cpu_governor);
+				updateFreqBar(st.cpu_hw_freq,st.cpu_min_freq,st.cpu_max_freq,st.pll_freq_mhz);
 				var gs=document.getElementById('airoha-npu-governor-select'); if(gs&&!gs.matches(':focus')) gs.value=st.cpu_governor||'';
 				var fs=document.getElementById('airoha-npu-maxfreq-select'); if(fs&&!fs.matches(':focus')) fs.value=(st.cpu_max_freq||0).toString();
 
