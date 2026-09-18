@@ -249,7 +249,7 @@ get_status() {
 		cpu_avail_governors=$(cat "$cpufreq_path/scaling_available_governors" 2>/dev/null || echo "")
 		cpu_min_freq=$(cat "$cpufreq_path/scaling_min_freq" 2>/dev/null || echo 0)
 		cpu_max_freq=$(cat "$cpufreq_path/scaling_max_freq" 2>/dev/null || echo 0)
-		cpu_avail_freqs=$(cat "$cpufreq_path/scaling_available_frequencies" 2>/dev/null || echo "")
+		cpu_avail_freqs=$(cpufreq_selectable)
 	fi
 
 	# Read the actual PLL frequency from hardware (detects overclock).
@@ -413,6 +413,25 @@ set_governor() {
 	fi
 }
 
+# Every frequency the policy will currently accept in scaling_max_freq.
+# Boost steps live in their own file and are absent from
+# scaling_available_frequencies, so a board whose max sits on one - AN7583
+# with the 1500-1600 MHz steps, for instance - otherwise reports a current
+# value that is in no list, which leaves the picker with nothing to select
+# and makes the value impossible to set again. They only count while the
+# boost knob is on; with it off the kernel refuses them.
+cpufreq_selectable() {
+	local path=/sys/devices/system/cpu/cpufreq/policy0
+	local freqs
+
+	freqs=$(cat "$path/scaling_available_frequencies" 2>/dev/null)
+	if [ "$(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null)" = "1" ]; then
+		freqs="$freqs $(cat "$path/scaling_boost_frequencies" 2>/dev/null)"
+	fi
+
+	echo "$freqs"
+}
+
 set_max_freq() {
 	local freq
 	freq=$(echo "$1" | jsonfilter -e "@.freq" 2>/dev/null)
@@ -423,7 +442,7 @@ set_max_freq() {
 	fi
 
 	# Validate freq is in available list
-	local avail=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_available_frequencies 2>/dev/null)
+	local avail=$(cpufreq_selectable)
 	if ! echo "$avail" | grep -qw "$freq"; then
 		printf '{"error":"invalid frequency: %s"}' "$freq"
 		return

@@ -350,6 +350,14 @@ function renderGovSelect(avail, active) {
 function renderMaxFreqSelect(avail, cur) {
 	var fs = (avail||'').trim().split(/\s+/).filter(Boolean);
 	if (!fs.length) return E('span',{},_('N/A'));
+	// scaling_max_freq is not always one of scaling_available_frequencies -
+	// firmware that offers a step above the OPP table puts a value here that
+	// the list does not contain, and a select with no matching option renders
+	// blank. Carry the current value into the list so it can be displayed.
+	if (cur && fs.indexOf(String(parseInt(cur))) < 0) {
+		fs.push(String(parseInt(cur)));
+		fs.sort(function(a,b){ return parseInt(a)-parseInt(b); });
+	}
 	return E('select', { 'id':'airoha-npu-maxfreq-select','class':'cbi-input-select','style':'min-width:140px','change':function(ev){
 		var sel=ev.target; sel.disabled=true;
 		callSetMaxFreq(parseInt(sel.value)).then(function(r){
